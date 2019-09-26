@@ -1,0 +1,51 @@
+version: '2.1'
+
+services:
+  hub:
+    image: selenium/hub:3.141.59-vanadium
+    healthcheck:
+      test: "curl -sS http://localhost:4444/wd/hub/status | jq '.value.ready | contains(true)'"
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - 4444:4444
+    logging:
+      driver: none
+  chrome:
+    image: selenium/node-chrome-debug:3.141.59-vanadium
+    depends_on:
+      - hub
+    volumes:
+      - /dev/shm:/dev/shm
+    environment:
+      - HUB_HOST=hub
+    ports:
+      - 5900:5900
+    logging:
+      driver: none
+  firefox:
+    image: selenium/node-firefox-debug:3.141.59-vanadium
+    depends_on:
+      - hub
+    volumes:
+      - /dev/shm:/dev/shm
+    environment:
+      - HUB_HOST=hub
+    ports:
+      - 5901:5900
+    logging:
+      driver: none
+  art:
+    build:
+      context: ../
+      args:
+        - RUNTIME_UID=$RUNTIME_UID
+    image: robotframework
+    command: --outputdir /home/robot/workspace/results /home/robot/workspace/tests
+    volumes:
+      - $TESTS_FOLDER:/home/robot/workspace/tests
+      - $RESULTS_FOLDER:/home/robot/workspace/results
+    depends_on:
+      hub:
+        condition: service_healthy
